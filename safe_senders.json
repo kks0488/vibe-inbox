@@ -1,0 +1,36 @@
+{
+  "description": "신뢰할 수 있는 발신자/도메인 목록. 이 목록에 있는 발신자는 자동 보관/스팸 처리되지 않습니다.",
+  "updated_at": "2026-01-12",
+  "senders": [
+    "search-api@brave.com",
+    "noreply@github.com",
+    "microsoft-noreply@microsoft.com",
+    "no_reply@coupang.com",
+    "upcoming-invoice@billing.futnext.com",
+    "easypay_noreturn@easypay.co.kr"
+  ],
+  "domains": [
+    "navercorp.com",
+    "naver.com",
+    "naver-corp.com",
+    "google.com",
+    "googlemail.com",
+    "google.co.kr",
+    "accounts.google.com",
+    "microsoft.com",
+    "outlook.com",
+    "github.com",
+    "slack.com",
+    "brave.com",
+    "npmjs.com",
+    "vercel.com",
+    "cloudflare.com",
+    "digitalocean.com",
+    "aws.amazon.com",
+    "cafe24corp.com",
+    "cafe24.com",
+    "coupang.com",
+    "kcp.co.kr",
+    "hyundaiezwel.com"
+  ]
+}

@@ -1,0 +1,13 @@
+.DS_Store
+._*
+.git
+.gitignore
+__pycache__
+*.pyc
+venv
+.venv
+logs
+token.json
+credentials.json
+.env
+

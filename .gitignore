@@ -1,0 +1,56 @@
+# 환경 및 인증 파일
+.env
+credentials.json
+token.json
+client_secret_*.json
+
+# 로컬 작업 파일
+.vibe/
+PROJECT_PORTS.md
+logs/
+
+# Mac 리소스 포크
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 가상환경
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+*.log
+

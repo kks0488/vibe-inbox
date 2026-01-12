@@ -1,0 +1,18 @@
+# Gmail Organizer Dependencies
+# Gmail API
+google-api-python-client==2.111.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.0
+
+# Google Generative AI (Gemini)
+google-genai>=1.0.0
+
+# Utilities
+python-dotenv==1.0.0
+rich==13.7.0
+tqdm==4.66.1
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
