@@ -1,8 +1,29 @@
 # VibeInbox
 
-**AI-powered Gmail inbox organizer** - Google Gemini AI **reads your email content** and classifies it automatically.
+**AI-powered inbox triage for Gmail** — Gemini reads email content (not just sender) and applies labels + safe actions.
 
 [한국어 문서 (Korean)](README.ko.md)
+
+## ⚡ Quickstart
+
+```bash
+git clone https://github.com/kks0488/vibe-inbox.git
+cd vibe-inbox
+
+pip install -r requirements.txt
+cp env_example.txt .env  # set GEMINI_API_KEY
+
+# Put your Gmail OAuth client file at ./credentials.json (see below)
+python main.py auth
+python main.py analyze -n 30          # dry-run
+python main.py organize -n 50 -y      # apply labels/actions
+```
+
+### ✅ Safe Defaults
+
+- No delete actions (trash is disabled)
+- Moves to spam only when confidence ≥ `90%`
+- Safe senders/domains are never auto-archived/spammed
 
 ## ✨ Features
 

@@ -1,6 +1,27 @@
 # VibeInbox
 
-**AI 기반 Gmail 받은편지함 정리 도구** - Google Gemini AI가 이메일 **본문 내용을 실제로 읽고** 분류합니다.
+**AI 기반 Gmail 받은편지함 트리아지(분류/정리) 도구** - Gemini가 이메일 **본문 내용을 실제로 읽고** 분류합니다.
+
+## ⚡ 빠른 시작
+
+```bash
+git clone https://github.com/kks0488/vibe-inbox.git
+cd vibe-inbox
+
+pip install -r requirements.txt
+cp env_example.txt .env  # GEMINI_API_KEY 설정
+
+# Gmail OAuth 클라이언트 파일을 ./credentials.json 로 준비 (아래 참고)
+python main.py auth
+python main.py analyze -n 30          # 분석만 (변경 없음)
+python main.py organize -n 50 -y      # 레이블/정리 적용
+```
+
+### ✅ 안전한 기본값
+
+- 삭제(휴지통 이동) 없음
+- 스팸 이동은 확신도 `90%` 이상일 때만
+- 신뢰 발신자/도메인은 자동 보관/스팸 처리되지 않음
 
 ## ✨ 주요 기능
 
@@ -199,7 +220,7 @@ EMAIL_CATEGORIES = {
 ### Gmail API
 
 - 스팸으로 분류된 이메일은 확신도가 높을 때만 이동됩니다
-- 레이블은 "AI분류/" 접두사로 생성됩니다
+- 레이블은 "AI/" 접두사로 생성됩니다 (이전 접두사: "AI분류/")
 - 삭제 기능은 비활성화되어 있습니다 (안전을 위해)
 
 ---
