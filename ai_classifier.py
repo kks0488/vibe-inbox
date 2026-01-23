@@ -40,6 +40,7 @@ class ClassificationCache:
         self.cache_dir = cache_dir or config.LOG_DIR
         self.cache_file = self.cache_dir / "classification_cache.json"
         self._cache: Dict[str, Dict] = {}
+        self._dirty = False  # Track if cache needs saving
         self._load_cache()
 
     def _load_cache(self):
@@ -120,7 +121,7 @@ class ClassificationCache:
         )
 
     def set(self, email: Email, result: ClassificationResult):
-        """분류 결과를 캐시에 저장"""
+        """분류 결과를 캐시에 저장 (메모리에만 저장, 디스크는 flush() 호출 시)"""
         if not config.CLASSIFICATION_CACHE_ENABLED:
             return
 
@@ -145,7 +146,13 @@ class ClassificationCache:
             "cached_at": datetime.now().isoformat()
         }
 
-        self._save_cache()
+        self._dirty = True  # Mark as dirty, don't save immediately
+
+    def flush(self):
+        """캐시를 디스크에 저장 (dirty flag가 설정된 경우만)"""
+        if self._dirty:
+            self._save_cache()
+            self._dirty = False
 
     def clear(self):
         """캐시 전체 삭제"""
@@ -370,20 +377,24 @@ class EmailClassifier:
             raise ClassificationError(f"Classification failed: {e}") from e
     
     def classify_emails(
-        self, 
+        self,
         emails: List[Email],
         show_progress: bool = True
     ) -> List[Tuple[Email, ClassificationResult]]:
         """여러 이메일을 분류합니다."""
         results = []
-        
+
         iterator = tqdm(emails, desc="이메일 분류 중") if show_progress else emails
-        
+
         for email in iterator:
             result = self.classify_email(email)
             if result:
                 results.append((email, result))
-        
+
+        # Flush cache at the end to batch all saves
+        if self.cache:
+            self.cache.flush()
+
         return results
     
     def _build_batch_prompt(self, emails: List[Email]) -> str:
@@ -479,6 +490,10 @@ class EmailClassifier:
                     result = self.classify_email(email)
                     if result:
                         all_results.append((email, result))
+
+        # Flush cache at the end to batch all saves
+        if self.cache:
+            self.cache.flush()
 
         return all_results
     
