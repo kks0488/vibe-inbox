@@ -4,19 +4,19 @@ After=network.target
 
 [Service]
 Type=simple
-User=kkaemo
-WorkingDirectory=/home/kkaemo/projects/gmail-organizer
-Environment=PATH=/home/kkaemo/projects/gmail-organizer/venv/bin:/usr/bin:/bin
-ExecStart=/home/kkaemo/projects/gmail-organizer/venv/bin/python scheduler.py --interval 60 --batch-size 50
+User=your-username
+WorkingDirectory=/home/your-username/projects/gmail-organizer
+Environment=PATH=/home/your-username/projects/gmail-organizer/venv/bin:/usr/bin:/bin
+ExecStart=/home/your-username/projects/gmail-organizer/venv/bin/python scheduler.py --interval 60 --batch-size 50
 Restart=always
 RestartSec=60
 
 # 로그 설정
-StandardOutput=append:/home/kkaemo/projects/gmail-organizer/logs/service.log
-StandardError=append:/home/kkaemo/projects/gmail-organizer/logs/service_error.log
+StandardOutput=append:/home/your-username/projects/gmail-organizer/logs/service.log
+StandardError=append:/home/your-username/projects/gmail-organizer/logs/service_error.log
 
 # 환경변수 파일
-EnvironmentFile=/home/kkaemo/projects/gmail-organizer/.env
+EnvironmentFile=/home/your-username/projects/gmail-organizer/.env
 
 [Install]
 WantedBy=multi-user.target
