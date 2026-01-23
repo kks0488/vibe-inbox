@@ -272,65 +272,7 @@ class GmailClient:
         except Exception as e:
             logger.warning(f"이메일 파싱 실패 ({msg_id}): {e}")
             return None
-    
-    def _get_email_detail(self, msg_id: str) -> Optional[Email]:
-        """이메일 상세 정보를 가져옵니다."""
-        try:
-            message = self.service.users().messages().get(
-                userId=self.user_id,
-                id=msg_id,
-                format='full'
-            ).execute()
-            
-            headers = message.get('payload', {}).get('headers', [])
-            
-            # 헤더에서 정보 추출
-            subject = ""
-            sender = ""
-            sender_email = ""
-            date = ""
-            
-            for header in headers:
-                name = header['name'].lower()
-                value = header['value']
-                
-                if name == 'subject':
-                    subject = value
-                elif name == 'from':
-                    sender = value
-                    # 이메일 주소 추출
-                    if '<' in value and '>' in value:
-                        sender_email = value.split('<')[1].split('>')[0]
-                    else:
-                        sender_email = value
-                elif name == 'date':
-                    date = value
-            
-            # 본문 추출
-            body = self._extract_body(message.get('payload', {}))
-            
-            # 레이블 정보
-            label_ids = message.get('labelIds', [])
-            labels = [self._get_label_name(lid) for lid in label_ids]
-            is_unread = 'UNREAD' in label_ids
-            
-            return Email(
-                id=msg_id,
-                thread_id=message.get('threadId', ''),
-                subject=subject,
-                sender=sender,
-                sender_email=sender_email,
-                date=date,
-                snippet=message.get('snippet', ''),
-                body=body,
-                labels=labels,
-                is_unread=is_unread
-            )
-            
-        except HttpError as e:
-            console.print(f"[red]이메일 상세 정보 가져오기 실패 ({msg_id}): {e}[/red]")
-            return None
-    
+
     def _extract_body(self, payload: Dict) -> str:
         """이메일 본문을 추출합니다. text/plain 우선, 없으면 text/html 사용"""
         import re
