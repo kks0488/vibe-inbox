@@ -17,6 +17,7 @@ import logging
 
 import config
 from auth import get_gmail_credentials
+from exceptions import GmailConnectionError, RateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,9 @@ class GmailClient:
             emails = self._batch_get_emails(msg_ids)
 
         except HttpError as e:
-            console.print(f"[red]이메일 가져오기 실패: {e}[/red]")
+            if e.resp.status == 429:
+                raise RateLimitError("Gmail API rate limit exceeded") from e
+            raise GmailConnectionError(f"Gmail API error: {e}") from e
 
         return emails
 
@@ -177,9 +180,11 @@ class GmailClient:
                             delay = config.GMAIL_RETRY_DELAY * (2 ** retry)
                             logger.warning(f"Rate limit 도달, {delay}초 후 재시도...")
                             time.sleep(delay)
+                            if retry == config.GMAIL_RETRY_MAX - 1:
+                                raise RateLimitError("Gmail API rate limit exceeded after retries") from e
                         else:
                             logger.error(f"배치 요청 실패: {e}")
-                            break
+                            raise GmailConnectionError(f"Gmail API error: {e}") from e
 
                 pbar.update(len(batch_ids))
 

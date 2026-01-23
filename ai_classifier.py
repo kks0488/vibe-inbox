@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 import config
 from gmail_client import Email
+from exceptions import ClassificationError, RateLimitError
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -217,6 +218,8 @@ class EmailClassifier:
                         wait_time = config.API_RETRY_DELAY_BASE * (2 ** attempt)
                         logger.warning(f"Rate limit - {wait_time}초 대기 후 재시도 ({attempt + 1}/{config.MAX_API_RETRIES})")
                         time.sleep(wait_time)
+                        if attempt == config.MAX_API_RETRIES - 1:
+                            raise RateLimitError(f"API rate limit exceeded after {config.MAX_API_RETRIES} retries") from e
                         continue
 
                     # 모델 없음 에러 - 다음 모델로 폴백
@@ -361,17 +364,10 @@ class EmailClassifier:
 
         except json.JSONDecodeError as e:
             console.print(f"[yellow]⚠ JSON 파싱 오류 ({email.subject[:config.SUBJECT_PREVIEW_LENGTH]}...): {e}[/yellow]")
-            return ClassificationResult(
-                email_id=email.id,
-                category='NORMAL',
-                confidence=config.FALLBACK_CONFIDENCE,
-                reason='분류 실패 - 기본값 적용',
-                suggested_action='keep',
-                priority=config.DEFAULT_PRIORITY
-            )
+            raise ClassificationError(f"Failed to parse AI response: {e}") from e
         except Exception as e:
             console.print(f"[red]✗ 분류 오류 ({email.subject[:config.SUBJECT_PREVIEW_LENGTH]}...): {e}[/red]")
-            return None
+            raise ClassificationError(f"Classification failed: {e}") from e
     
     def classify_emails(
         self, 
