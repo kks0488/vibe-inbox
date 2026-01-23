@@ -1,6 +1,7 @@
 """
 gmail_client.py 테스트
 """
+import math
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 import sys
@@ -33,19 +34,23 @@ class TestGmailClientBatch:
 
         client = GmailClient()
 
-        # 테스트: 50개 메시지 ID로 배치 요청
-        msg_ids = [f"msg_{i}" for i in range(50)]
+        # 테스트: config.GMAIL_BATCH_SIZE보다 적은 메시지 ID로 배치 요청
+        # 경계값 테스트: 배치 크기 - 2개로 단일 배치 생성 확인
+        msg_count = config.GMAIL_BATCH_SIZE - 2
+        msg_ids = [f"msg_{i}" for i in range(msg_count)]
         client._batch_get_emails(msg_ids)
 
-        # 배치가 한 번만 생성되어야 함 (50 < config.GMAIL_BATCH_SIZE=100)
+        # 배치가 한 번만 생성되어야 함 (msg_count < config.GMAIL_BATCH_SIZE)
         assert mock_service.new_batch_http_request.call_count == 1
+        # 모든 메시지가 배치에 추가되어야 함
+        assert mock_batch.add.call_count == msg_count
         # batch.execute()가 호출되어야 함
         assert mock_batch.execute.call_count == 1
 
     @patch('gmail_client.get_gmail_credentials')
     @patch('gmail_client.build')
     def test_batch_get_emails_handles_large_batches(self, mock_build, mock_creds):
-        """100개 이상의 이메일도 올바르게 처리하는지 확인"""
+        """배치 크기를 초과하는 이메일도 올바르게 처리하는지 확인"""
         from gmail_client import GmailClient
         import config
 
@@ -57,13 +62,18 @@ class TestGmailClientBatch:
 
         client = GmailClient()
 
-        # 150개 메시지 ID (2개 배치 필요)
-        msg_ids = [f"msg_{i}" for i in range(150)]
+        # 다중 배치 테스트: 배치 크기의 2.5배 (예: 10 * 2.5 = 25개)
+        # 이는 3개의 배치로 분할됨 (10 + 10 + 5)
+        msg_count = config.GMAIL_BATCH_SIZE * 2 + config.GMAIL_BATCH_SIZE // 2
+        msg_ids = [f"msg_{i}" for i in range(msg_count)]
         client._batch_get_emails(msg_ids)
 
-        # 2개 배치가 생성되어야 함
-        assert mock_service.new_batch_http_request.call_count == 2
-        assert mock_batch.execute.call_count == 2
+        # 필요한 배치 수 계산
+        expected_batches = math.ceil(msg_count / config.GMAIL_BATCH_SIZE)
+        assert mock_service.new_batch_http_request.call_count == expected_batches
+        # 모든 메시지가 배치에 추가되어야 함
+        assert mock_batch.add.call_count == msg_count
+        assert mock_batch.execute.call_count == expected_batches
 
     @patch('gmail_client.get_gmail_credentials')
     @patch('gmail_client.build')
