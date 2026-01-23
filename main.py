@@ -15,20 +15,9 @@ import config
 from auth import get_gmail_credentials, check_auth_status, revoke_credentials
 from gmail_client import GmailClient, Email
 from ai_classifier import EmailClassifier, ClassificationResult
+from utils import is_safe_sender
 
 console = Console()
-
-
-def is_safe_sender(email: Email) -> bool:
-    """신뢰 발신자인 경우 자동 액션을 건너뜁니다."""
-    sender_email = (email.sender_email or "").lower()
-    if sender_email in {s.lower() for s in config.SAFE_SENDERS}:
-        return True
-    if "@" in sender_email:
-        domain = sender_email.split("@", 1)[1]
-        if domain in {d.lower() for d in config.SAFE_DOMAINS}:
-            return True
-    return False
 
 
 def print_banner():

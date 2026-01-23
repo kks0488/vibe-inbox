@@ -5,6 +5,7 @@ import pytest
 import json
 import sys
 from pathlib import Path
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -37,6 +38,30 @@ class TestIsSafeSender:
         """대소문자 구분 없이 작동"""
         assert is_safe_sender("NOREPLY@GITHUB.COM") is True
         assert is_safe_sender("Someone@Google.Com") is True
+
+    def test_with_email_object_safe_sender(self):
+        """Email 객체로 호출 - SAFE_SENDERS에 있는 발신자"""
+        email = Mock()
+        email.sender_email = "noreply@github.com"
+        assert is_safe_sender(email) is True
+
+    def test_with_email_object_safe_domain(self):
+        """Email 객체로 호출 - SAFE_DOMAINS에 있는 도메인"""
+        email = Mock()
+        email.sender_email = "user@google.com"
+        assert is_safe_sender(email) is True
+
+    def test_with_email_object_unsafe(self):
+        """Email 객체로 호출 - 신뢰 목록에 없는 발신자"""
+        email = Mock()
+        email.sender_email = "spam@unknown-domain.xyz"
+        assert is_safe_sender(email) is False
+
+    def test_with_email_object_none_sender(self):
+        """Email 객체로 호출 - sender_email이 None"""
+        email = Mock()
+        email.sender_email = None
+        assert is_safe_sender(email) is False
 
 
 class TestExtractJsonFromResponse:

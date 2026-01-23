@@ -22,22 +22,11 @@ from cold_email_blocker import ColdEmailBlocker
 from classification_stats import get_stats, ClassificationRecord
 from slack_notifier import get_notifier, EmailNotification
 from safe_sender_learner import SafeSenderLearner
+from utils import is_safe_sender
 
 # 통합 로깅 설정
 logger = config.setup_logging(name="scheduler", log_file="scheduler.log", use_rich=True)
 console = Console()
-
-
-def is_safe_sender(email) -> bool:
-    """신뢰 발신자는 자동 액션을 건너뜁니다."""
-    sender_email = (email.sender_email or "").lower()
-    if sender_email in {s.lower() for s in config.SAFE_SENDERS}:
-        return True
-    if "@" in sender_email:
-        domain = sender_email.split("@", 1)[1]
-        if domain in {d.lower() for d in config.SAFE_DOMAINS}:
-            return True
-    return False
 
 
 class GmailScheduler:

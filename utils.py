@@ -4,23 +4,29 @@ Gmail Organizer 유틸리티 모듈
 """
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 import config
 
 logger = logging.getLogger(__name__)
 
 
-def is_safe_sender(sender_email: str) -> bool:
+def is_safe_sender(email_or_str: Union[str, Any]) -> bool:
     """
     신뢰할 수 있는 발신자인지 확인합니다.
 
     Args:
-        sender_email: 발신자 이메일 주소
+        email_or_str: Email 객체 또는 발신자 이메일 주소 문자열
 
     Returns:
         bool: 신뢰 발신자면 True
     """
+    # Email 객체인 경우 sender_email 속성 추출
+    if hasattr(email_or_str, 'sender_email'):
+        sender_email = email_or_str.sender_email
+    else:
+        sender_email = email_or_str
+
     sender_email = (sender_email or "").lower().strip()
 
     # 빈 이메일 체크
