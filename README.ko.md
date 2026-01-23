@@ -1,6 +1,6 @@
-# 📧 Gmail Organizer
+# VibeInbox
 
-**AI 기반 Gmail 정리 도구** - Google Gemini AI가 이메일 **본문 내용을 실제로 읽고** 분류합니다.
+**AI 기반 Gmail 받은편지함 정리 도구** - Google Gemini AI가 이메일 **본문 내용을 실제로 읽고** 분류합니다.
 
 ## ✨ 주요 기능
 
@@ -27,7 +27,7 @@
 ✅ 이 도구:   Google 결제 알림 → 중요 / Google 프로모션 → 보관
 ```
 
-| 이메일 예시 | 기존 | Gmail Organizer |
+| 이메일 예시 | 기존 | VibeInbox |
 |------------|------|-----------------|
 | LinkedIn 댓글 알림 | 중요 | ✅ 중요 |
 | LinkedIn 팔로우 추천 | 중요 | 📦 보관 |
@@ -47,7 +47,7 @@
 ### 2. 의존성 설치
 
 ```bash
-cd gmail-organizer
+cd vibe-inbox  # (이전: gmail-organizer)
 pip install -r requirements.txt
 ```
 
@@ -207,7 +207,7 @@ EMAIL_CATEGORIES = {
 ## 📁 프로젝트 구조
 
 ```
-gmail-organizer/
+vibe-inbox/
 ├── main.py              # 메인 실행 파일
 ├── config.py            # 설정 파일
 ├── auth.py              # Gmail OAuth 인증
@@ -228,7 +228,7 @@ gmail-organizer/
 
 ```bash
 # 로컬에서 Ubuntu 서버로 파일 전송
-scp -r /path/to/gmail-organizer username@your-server:/home/username/
+scp -r /path/to/vibe-inbox username@your-server:/home/username/
 ```
 
 ### 2. Ubuntu에서 설치 스크립트 실행
@@ -238,9 +238,11 @@ scp -r /path/to/gmail-organizer username@your-server:/home/username/
 ssh username@your-server
 
 # 설치 스크립트 실행
-cd ~/gmail-organizer
+cd ~/vibe-inbox
 chmod +x install_ubuntu.sh
 ./install_ubuntu.sh
+
+# 참고: 설치 스크립트는 기본적으로 ~/gmail-organizer 에 프로젝트를 복사합니다
 ```
 
 ### 3. 인증 설정 (중요!)
@@ -340,4 +342,3 @@ MIT License
 ## 🤝 기여
 
 버그 리포트, 기능 제안, PR을 환영합니다!
-

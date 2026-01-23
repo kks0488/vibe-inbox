@@ -1,6 +1,6 @@
-# 📧 Gmail Organizer
+# VibeInbox
 
-**AI-powered Gmail organization tool** - Google Gemini AI **reads your email content** and classifies them automatically.
+**AI-powered Gmail inbox organizer** - Google Gemini AI **reads your email content** and classifies it automatically.
 
 [한국어 문서 (Korean)](README.ko.md)
 
@@ -29,7 +29,7 @@
 ✅ This tool:   Google payment alert → Important / Google promo → Archive
 ```
 
-| Email Example | Traditional | Gmail Organizer |
+| Email Example | Traditional | VibeInbox |
 |---------------|-------------|-----------------|
 | LinkedIn comment notification | Important | ✅ Important |
 | LinkedIn "follow this person" | Important | 📦 Archive |
@@ -49,7 +49,7 @@
 ### 2. Install Dependencies
 
 ```bash
-cd gmail-organizer
+cd vibe-inbox  # (formerly: gmail-organizer)
 pip install -r requirements.txt
 ```
 
@@ -208,7 +208,7 @@ EMAIL_CATEGORIES = {
 ## 📁 Project Structure
 
 ```
-gmail-organizer/
+vibe-inbox/
 ├── main.py              # Main executable
 ├── config.py            # Configuration
 ├── auth.py              # Gmail OAuth authentication
@@ -231,7 +231,7 @@ gmail-organizer/
 
 ```bash
 # Transfer from local to Ubuntu server
-scp -r /path/to/gmail-organizer username@your-server:/home/username/
+scp -r /path/to/vibe-inbox username@your-server:/home/username/
 ```
 
 ### 2. Run Install Script
@@ -241,9 +241,11 @@ scp -r /path/to/gmail-organizer username@your-server:/home/username/
 ssh username@your-server
 
 # Run install script
-cd ~/gmail-organizer
+cd ~/vibe-inbox
 chmod +x install_ubuntu.sh
 ./install_ubuntu.sh
+
+# Note: installer copies the project to ~/gmail-organizer by default
 ```
 
 ### 3. Authentication Setup (Important!)

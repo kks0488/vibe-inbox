@@ -1,10 +1,10 @@
-# Gmail Organizer Architecture
+# VibeInbox Architecture
 
 ## System Overview
 
 ```mermaid
 graph TB
-    subgraph "Gmail Organizer"
+    subgraph "VibeInbox (Gmail Organizer)"
         M[main.py] --> A[auth.py]
         M --> G[gmail_client.py]
         M --> C[ai_classifier.py]
