@@ -103,10 +103,35 @@ class GmailScheduler:
     
     def _filter_unprocessed_emails(self, emails) -> List:
         """
-        모든 메일을 다시 분류/재배치하도록 건너뛰지 않습니다.
-        이미 AI 레이블이 있어도 재적용/재처리합니다.
+        이미 분류된 이메일은 스킵합니다 (기본값).
+        장기 실행 스케줄러에서 동일 이메일을 매 주기마다 재분류하는 비용/딜레이를 방지합니다.
         """
-        return emails
+        if not config.SKIP_ALREADY_CLASSIFIED:
+            return emails
+
+        classified_labels = {
+            f"{config.LABEL_PREFIX}{info.get('name', cat)}"
+            for cat, info in config.EMAIL_CATEGORIES.items()
+        }
+        classified_labels |= {
+            f"{config.OLD_LABEL_PREFIX}{info.get('name', cat)}"
+            for cat, info in config.EMAIL_CATEGORIES.items()
+        }
+
+        filtered = []
+        skipped = 0
+
+        for email in emails:
+            labels = getattr(email, "labels", []) or []
+            if any(label in classified_labels for label in labels):
+                skipped += 1
+                continue
+            filtered.append(email)
+
+        if skipped:
+            logger.info(f"이미 분류된 이메일 {skipped}개 스킵")
+
+        return filtered
     
     def _check_token_status(self):
         """토큰 상태를 확인하고 필요 시 갱신"""

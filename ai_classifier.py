@@ -442,14 +442,36 @@ class EmailClassifier:
         batch_size: int = config.AI_BATCH_SIZE
     ) -> List[Tuple[Email, ClassificationResult]]:
         """배치로 이메일을 분류합니다."""
-        all_results = []
-        email_dict = {e.id: e for e in emails}
+        all_results: List[Tuple[Email, ClassificationResult]] = []
 
         for i in tqdm(range(0, len(emails), batch_size), desc="배치 분류"):
             batch = emails[i:i + batch_size]
+            batch_to_classify = batch
+
+            # Cache pre-check: skip already-classified emails
+            if self.cache:
+                cached_results: List[Tuple[Email, ClassificationResult]] = []
+                uncached: List[Email] = []
+
+                for email in batch:
+                    cached = self.cache.get(email)
+                    if cached:
+                        self._cache_hits += 1
+                        cached_results.append((email, cached))
+                    else:
+                        self._cache_misses += 1
+                        uncached.append(email)
+
+                all_results.extend(cached_results)
+                batch_to_classify = uncached
+
+            if not batch_to_classify:
+                continue
+
+            email_dict = {e.id: e for e in batch_to_classify}
 
             try:
-                prompt = self._build_batch_prompt(batch)
+                prompt = self._build_batch_prompt(batch_to_classify)
 
                 # 재시도 + 폴백 로직 사용
                 response_text = self._call_api_with_retry(prompt)
@@ -463,10 +485,17 @@ class EmailClassifier:
                     response_text = response_text.split("```")[1].split("```")[0].strip()
 
                 results = json.loads(response_text)
+                if not isinstance(results, list):
+                    raise Exception("배치 응답이 JSON 배열이 아님")
 
+                processed_ids = set()
                 for result in results:
+                    if not isinstance(result, dict):
+                        continue
+
                     email_id = result.get('email_id')
                     if email_id in email_dict:
+                        processed_ids.add(email_id)
                         # 카테고리 유효성 검사
                         valid_categories = ['IMPORTANT', 'NORMAL', 'INFO', 'SPAM']
                         category = result.get('category', 'NORMAL').upper()
@@ -481,12 +510,26 @@ class EmailClassifier:
                             suggested_action=result.get('suggested_action', 'keep'),
                             priority=int(result.get('priority', config.DEFAULT_PRIORITY))
                         )
-                        all_results.append((email_dict[email_id], classification))
+                        email_obj = email_dict[email_id]
+                        all_results.append((email_obj, classification))
+
+                        # 배치 결과도 캐시에 저장
+                        if self.cache:
+                            self.cache.set(email_obj, classification)
+
+                # 누락된 이메일은 개별 분류로 보완
+                missing = [e for e in batch_to_classify if e.id not in processed_ids]
+                if missing:
+                    logger.warning(f"배치 응답 누락 {len(missing)}개 - 개별 분류로 보완")
+                    for email in missing:
+                        result = self.classify_email(email)
+                        if result:
+                            all_results.append((email, result))
 
             except Exception as e:
                 console.print(f"[yellow]⚠ 배치 처리 오류: {e}[/yellow]")
                 # 개별 분류로 폴백
-                for email in batch:
+                for email in batch_to_classify:
                     result = self.classify_email(email)
                     if result:
                         all_results.append((email, result))

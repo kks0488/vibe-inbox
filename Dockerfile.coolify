@@ -7,7 +7,6 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY *.py ./
 
 CMD ["python", "scheduler.py", "--interval", "30", "--batch-size", "50"]
-

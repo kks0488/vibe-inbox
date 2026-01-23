@@ -110,6 +110,7 @@ OLD_LABEL_PREFIX = "AI분류/"   # 과거 접두사 (이 레이블도 건너뛰�
 
 # 안전/보호 옵션
 SPAM_CONFIDENCE_THRESHOLD = 0.9   # 스팸 이동 최소 확신도
+SKIP_ALREADY_CLASSIFIED = os.getenv("SKIP_ALREADY_CLASSIFIED", "true").lower() == "true"
 
 # 신뢰 발신자/도메인: 외부 파일에서 로드 (safe_senders.json)
 # 자동 보관/스팸 금지, 레이블만 적용
@@ -227,4 +228,3 @@ SLACK_IMPORTANT_KEYWORDS = ["긴급", "urgent", "결제", "payment", "보안", "
 # 안전 발신자 자동 학습 설정
 AUTO_LEARN_SAFE_SENDERS = os.getenv("AUTO_LEARN_SAFE_SENDERS", "true").lower() == "true"
 SAFE_SENDERS_FILE = BASE_DIR / "safe_senders.json"
-

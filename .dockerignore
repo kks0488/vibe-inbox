@@ -9,5 +9,10 @@ venv
 logs
 token.json
 credentials.json
+client_secret_*.json
+safe_senders.json
 .env
-
+.pytest_cache
+.vc
+auth.log
+oauth.log

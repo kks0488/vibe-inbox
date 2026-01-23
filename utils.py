@@ -4,11 +4,59 @@ Gmail Organizer 유틸리티 모듈
 """
 import json
 import logging
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, Tuple
 
 import config
 
 logger = logging.getLogger(__name__)
+
+# Safe sender cache (reloads when safe_senders.json changes)
+_SAFE_CACHE_MTIME: Optional[float] = None
+_SAFE_CACHE_PATH: Optional[str] = None
+_SAFE_CACHE_SENDERS: set[str] = set()
+_SAFE_CACHE_DOMAINS: set[str] = set()
+
+
+def _get_safe_sender_sets() -> Tuple[set[str], set[str]]:
+    """
+    Returns lowercased safe sender/domain sets.
+
+    Source of truth is `config.SAFE_SENDERS_FILE` (auto-learn updates this file).
+    Falls back to `config.SAFE_SENDERS` / `config.SAFE_DOMAINS` when the file
+    doesn't exist or can't be read.
+    """
+    global _SAFE_CACHE_MTIME, _SAFE_CACHE_PATH, _SAFE_CACHE_SENDERS, _SAFE_CACHE_DOMAINS
+
+    safe_file = getattr(config, "SAFE_SENDERS_FILE", None)
+    if safe_file is None:
+        return ({s.lower() for s in config.SAFE_SENDERS}, {d.lower() for d in config.SAFE_DOMAINS})
+
+    try:
+        mtime = safe_file.stat().st_mtime
+    except FileNotFoundError:
+        return ({s.lower() for s in config.SAFE_SENDERS}, {d.lower() for d in config.SAFE_DOMAINS})
+    except Exception as e:
+        logger.debug(f"safe_senders 파일 stat 실패: {e}")
+        return ({s.lower() for s in config.SAFE_SENDERS}, {d.lower() for d in config.SAFE_DOMAINS})
+
+    safe_path = str(safe_file)
+    if _SAFE_CACHE_PATH == safe_path and _SAFE_CACHE_MTIME == mtime:
+        return (_SAFE_CACHE_SENDERS, _SAFE_CACHE_DOMAINS)
+
+    try:
+        with open(safe_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        senders = {s.lower() for s in data.get("senders", []) if isinstance(s, str)}
+        domains = {d.lower() for d in data.get("domains", []) if isinstance(d, str)}
+
+        _SAFE_CACHE_MTIME = mtime
+        _SAFE_CACHE_PATH = safe_path
+        _SAFE_CACHE_SENDERS = senders
+        _SAFE_CACHE_DOMAINS = domains
+        return (senders, domains)
+    except Exception as e:
+        logger.debug(f"safe_senders.json 로드 실패: {e}")
+        return ({s.lower() for s in config.SAFE_SENDERS}, {d.lower() for d in config.SAFE_DOMAINS})
 
 
 def is_safe_sender(email_or_str: Union[str, Any]) -> bool:
@@ -33,14 +81,16 @@ def is_safe_sender(email_or_str: Union[str, Any]) -> bool:
     if not sender_email:
         return False
 
+    safe_senders, safe_domains = _get_safe_sender_sets()
+
     # SAFE_SENDERS에 있는지 확인
-    if sender_email in {s.lower() for s in config.SAFE_SENDERS}:
+    if sender_email in safe_senders:
         return True
 
     # 도메인 확인
     if "@" in sender_email:
         domain = sender_email.split("@", 1)[1]
-        if domain in {d.lower() for d in config.SAFE_DOMAINS}:
+        if domain in safe_domains:
             return True
 
     return False

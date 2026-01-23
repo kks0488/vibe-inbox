@@ -139,30 +139,44 @@ def cmd_organize(count: int = 50, query: str = "", auto_apply: bool = False):
         actions_table.add_column("개수")
         actions_table.add_column("작업")
         
-        action_counts = {
-            'label': 0,
-            'archive': 0,
-            'spam': 0,
-            'skip': 0
+        plan_counts = {
+            "labeled": 0,
+            "archive": 0,
+            "spam": 0,
         }
         
         for category, items in summary.items():
             if items:
                 cat_info = config.EMAIL_CATEGORIES.get(category, {})
                 action = cat_info.get('action', 'keep')
-                
-                if action == 'archive':
-                    action_text = "보관처리 (받은편지함에서 제거)"
-                    action_counts['archive'] += len(items)
-                elif action == 'spam':
-                    action_text = "스팸으로 이동"
-                    action_counts['spam'] += len(items)
-                elif action == 'suggest_unsubscribe':
+
+                total = len(items)
+                will_archive = 0
+                will_spam = 0
+
+                for email, result in items:
+                    if is_safe_sender(email):
+                        continue
+                    if action == "archive":
+                        will_archive += 1
+                    elif action == "spam" and result.confidence >= config.SPAM_CONFIDENCE_THRESHOLD:
+                        will_spam += 1
+
+                plan_counts["labeled"] += total
+                plan_counts["archive"] += will_archive
+                plan_counts["spam"] += will_spam
+
+                if action == "archive":
+                    action_text = f"보관처리: {will_archive}개, 레이블만: {total - will_archive}개"
+                elif action == "spam":
+                    action_text = (
+                        f"스팸 이동(확신도≥{config.SPAM_CONFIDENCE_THRESHOLD:.0%}): {will_spam}개, "
+                        f"레이블만: {total - will_spam}개"
+                    )
+                elif action == "suggest_unsubscribe":
                     action_text = "레이블 추가 (구독취소 권장)"
-                    action_counts['label'] += len(items)
                 else:
                     action_text = "레이블만 추가"
-                    action_counts['label'] += len(items)
                 
                 actions_table.add_row(
                     cat_info.get('name', category),
@@ -181,6 +195,12 @@ def cmd_organize(count: int = 50, query: str = "", auto_apply: bool = False):
         
         # 레이블 생성 및 적용
         console.print("\n[cyan]🏷️[/cyan] 레이블 적용 중...\n")
+
+        applied_counts = {
+            "labeled": 0,
+            "archive": 0,
+            "spam": 0,
+        }
         
         for category, items in summary.items():
             if not items:
@@ -200,7 +220,8 @@ def cmd_organize(count: int = 50, query: str = "", auto_apply: bool = False):
             
             for email, result in items:
                 # 레이블 적용
-                client.apply_label(email.id, label_id)
+                if client.apply_label(email.id, label_id):
+                    applied_counts["labeled"] += 1
                 
                 # 안전 발신자는 항상 레이블만 적용
                 if is_safe_sender(email):
@@ -208,15 +229,17 @@ def cmd_organize(count: int = 50, query: str = "", auto_apply: bool = False):
                 
                 # 추가 작업 적용
                 if action == 'archive':
-                    client.archive_email(email.id)
+                    if client.archive_email(email.id):
+                        applied_counts["archive"] += 1
                 elif action == 'spam' and result.confidence >= config.SPAM_CONFIDENCE_THRESHOLD:
                     # 스팸은 충분히 높은 확신도일 때만
-                    client.mark_as_spam(email.id)
+                    if client.mark_as_spam(email.id):
+                        applied_counts["spam"] += 1
         
         console.print("\n[green]✓ 정리 완료![/green]")
-        console.print(f"  📁 레이블 적용: {action_counts['label']}개")
-        console.print(f"  📦 보관처리: {action_counts['archive']}개")
-        console.print(f"  🚫 스팸 이동: {action_counts['spam']}개")
+        console.print(f"  📁 레이블 적용: {applied_counts['labeled']}개 (예상 {plan_counts['labeled']}개)")
+        console.print(f"  📦 보관처리: {applied_counts['archive']}개 (예상 {plan_counts['archive']}개)")
+        console.print(f"  🚫 스팸 이동: {applied_counts['spam']}개 (예상 {plan_counts['spam']}개)")
         
     except Exception as e:
         console.print(f"[red]✗ 정리 실패: {e}[/red]")
@@ -342,4 +365,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
