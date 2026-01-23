@@ -7,7 +7,7 @@ Type=simple
 User=kkaemo
 WorkingDirectory=/home/kkaemo/projects/gmail-organizer
 Environment=PATH=/home/kkaemo/projects/gmail-organizer/venv/bin:/usr/bin:/bin
-ExecStart=/home/kkaemo/projects/gmail-organizer/venv/bin/python scheduler.py --interval 30 --batch-size 50
+ExecStart=/home/kkaemo/projects/gmail-organizer/venv/bin/python scheduler.py --interval 60 --batch-size 50
 Restart=always
 RestartSec=60
 

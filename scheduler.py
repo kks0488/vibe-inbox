@@ -20,6 +20,8 @@ from ai_classifier import EmailClassifier
 from email_reporter import WeeklyReporter
 from cold_email_blocker import ColdEmailBlocker
 from classification_stats import get_stats, ClassificationRecord
+from slack_notifier import get_notifier, EmailNotification
+from safe_sender_learner import SafeSenderLearner
 
 # 통합 로깅 설정
 logger = config.setup_logging(name="scheduler", log_file="scheduler.log", use_rich=True)
@@ -55,7 +57,10 @@ class GmailScheduler:
         self.classifier: Optional[EmailClassifier] = None
         self.weekly_reporter: Optional[WeeklyReporter] = None
         self.cold_email_blocker: Optional[ColdEmailBlocker] = None
-        
+        self.slack_notifier = None
+        self.safe_sender_learner: Optional[SafeSenderLearner] = None
+        self._last_learn_time: Optional[datetime] = None
+
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
     
@@ -81,10 +86,25 @@ class GmailScheduler:
             self.cold_email_blocker = ColdEmailBlocker(self.gmail_client)
             # 시작 시 알려진 발신자 갱신 (백그라운드에서 빠르게)
             self.cold_email_blocker.refresh_known_senders()
-            
+
+            # Slack 알림 초기화
+            logger.info("Slack 알림 초기화 중...")
+            self.slack_notifier = get_notifier()
+            if self.slack_notifier.enabled:
+                logger.info("Slack 알림 활성화됨")
+            else:
+                logger.info("Slack 알림 비활성화 (토큰 또는 채널 미설정)")
+
+            # 안전 발신자 자동 학습 초기화
+            if config.AUTO_LEARN_SAFE_SENDERS:
+                logger.info("안전 발신자 자동 학습 초기화 중...")
+                self.safe_sender_learner = SafeSenderLearner(self.gmail_client)
+                stats = self.safe_sender_learner.get_stats()
+                logger.info(f"안전 발신자: {stats['senders']}명, 도메인: {stats['domains']}개")
+
             profile = self.gmail_client.get_profile()
             logger.info(f"Gmail 연결됨: {profile.get('emailAddress', 'N/A')}")
-            
+
             return True
         except Exception as e:
             logger.error(f"초기화 실패: {e}")
@@ -230,14 +250,23 @@ class GmailScheduler:
         logger.info(f"  📬 읽지않음 유지: {kept_unread}개")
         logger.info(f"  📦 보관: {archived}개, 🚫 스팸: {spammed}개")
         logger.info(f"  📊 {stats_summary}")
-        
+
+        # Slack 처리 요약 알림
+        if self.slack_notifier and (archived > 0 or spammed > 0):
+            self.slack_notifier.notify_processing_summary(
+                total=len(results),
+                categories=stats,
+                archived=archived,
+                spam=spammed
+            )
+
         return len(results)
     
     def _check_weekly_report(self):
         """주간 리포트 발송 체크"""
         if not self.weekly_reporter or not config.WEEKLY_REPORT_ENABLED:
             return
-        
+
         try:
             if self.weekly_reporter.should_send_report():
                 logger.info("=== 주간 스팸 리포트 발송 ===")
@@ -247,6 +276,39 @@ class GmailScheduler:
                     logger.warning("주간 리포트 발송 실패")
         except Exception as e:
             logger.error(f"주간 리포트 체크 오류: {e}", exc_info=True)
+
+    def _learn_safe_senders(self):
+        """안전 발신자 자동 학습 (하루에 한 번)"""
+        if not self.safe_sender_learner:
+            return
+
+        now = datetime.now()
+
+        # 마지막 학습 후 24시간이 지났는지 확인
+        if self._last_learn_time:
+            hours_since_last = (now - self._last_learn_time).total_seconds() / 3600
+            if hours_since_last < 24:
+                return
+
+        try:
+            logger.info("=== 안전 발신자 자동 학습 ===")
+
+            # 보낸 편지함에서 학습
+            sent_count = self.safe_sender_learner.learn_from_sent_emails(days=7)
+
+            # 답장한 스레드에서 학습
+            reply_count = self.safe_sender_learner.learn_from_replied_threads()
+
+            total = sent_count + reply_count
+            if total > 0:
+                logger.info(f"안전 발신자 학습 완료: {total}명 추가 (보낸메일: {sent_count}, 답장: {reply_count})")
+            else:
+                logger.info("새로 학습할 안전 발신자 없음")
+
+            self._last_learn_time = now
+
+        except Exception as e:
+            logger.error(f"안전 발신자 학습 오류: {e}")
     
     def start(self):
         console.print("\n[bold cyan]🚀 Gmail Organizer 스케줄러 시작[/bold cyan]\n")
@@ -273,19 +335,21 @@ class GmailScheduler:
         # 첫 실행
         self._process_emails()
         self._check_weekly_report()
-        
+        self._learn_safe_senders()
+
         # 주기적 실행
         while self.running:
             logger.info(f"다음 실행까지 {self.interval_minutes}분 대기...")
-            
+
             for _ in range(self.interval_minutes * 60):
                 if not self.running:
                     break
                 time.sleep(1)
-            
+
             if self.running:
                 self._process_emails()
                 self._check_weekly_report()
+                self._learn_safe_senders()
         
         logger.info("스케줄러 종료됨")
     

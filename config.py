@@ -197,7 +197,10 @@ DEFAULT_SENDER_LIMIT = 30  # 기본 발신자 분류 제한
 MAX_RESULTS_DISPLAY = 20  # 결과 표시 최대 개수
 
 # Gmail Batch API 설정
-GMAIL_BATCH_SIZE = 100  # Gmail API 배치 요청 최대 크기
+GMAIL_BATCH_SIZE = 10  # Gmail API 배치 요청 최대 크기 (Rate limit 방지)
+GMAIL_BATCH_DELAY = 0.5  # 배치 간 딜레이 (초)
+GMAIL_RETRY_MAX = 3  # 재시도 횟수
+GMAIL_RETRY_DELAY = 2  # 재시도 딜레이 (초)
 
 # 분류 결과 캐싱 설정
 CLASSIFICATION_CACHE_ENABLED = True  # 분류 캐시 활성화
@@ -211,4 +214,17 @@ TOKEN_AUTO_REFRESH_HOURS = 1  # 자동 갱신 시작 시간 (만료 전 n시간)
 # 주간 리포트 설정
 WEEKLY_REPORT_ENABLED = True  # 주간 스팸 리포트 활성화
 WEEKLY_REPORT_INTERVAL_DAYS = 7  # 리포트 발송 간격 (일)
+
+# Slack 알림 설정
+SLACK_ENABLED = os.getenv("SLACK_ENABLED", "true").lower() == "true"
+SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN", "")
+SLACK_CHANNEL_ID = os.getenv("SLACK_GMAIL_CHANNEL_ID", "")  # 알림 받을 채널
+SLACK_NOTIFY_IMPORTANT = False  # 중요 이메일 알림 (비활성화)
+SLACK_NOTIFY_SPAM_SUMMARY = False  # 스팸 처리 요약 알림 (비활성화)
+# 오류 알림만 활성화됨
+SLACK_IMPORTANT_KEYWORDS = ["긴급", "urgent", "결제", "payment", "보안", "security", "비밀번호", "password"]
+
+# 안전 발신자 자동 학습 설정
+AUTO_LEARN_SAFE_SENDERS = os.getenv("AUTO_LEARN_SAFE_SENDERS", "true").lower() == "true"
+SAFE_SENDERS_FILE = BASE_DIR / "safe_senders.json"
 

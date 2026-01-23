@@ -1,0 +1,43 @@
+# project-registry:start
+x-project-registry:
+  name: gmail-organizer
+  port: 8211
+  env: prod
+  updated_at: 2026-01-23T12:34:01Z
+# project-registry:end
+
+version: '3.8'
+
+services:
+  gmail-organizer:
+    build: .
+    container_name: gmail-organizer
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - LOG_LEVEL=INFO
+      - SLACK_ENABLED=${SLACK_ENABLED:-true}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_GMAIL_CHANNEL_ID=${SLACK_GMAIL_CHANNEL_ID}
+      - AUTO_LEARN_SAFE_SENDERS=${AUTO_LEARN_SAFE_SENDERS:-true}
+    volumes:
+      # 토큰 파일 영구 저장 (재인증 방지)
+      - ./token.json:/app/token.json
+      # 인증 정보
+      - ./credentials.json:/app/credentials.json
+      # 안전 발신자 목록
+      - ./safe_senders.json:/app/safe_senders.json
+      # 로그 저장
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "from auth import check_auth_status; exit(0 if check_auth_status() else 1)"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -241,38 +241,57 @@ class EmailClassifier:
     
     def _build_classification_prompt(self, email: Email) -> str:
         """분류를 위한 프롬프트를 생성합니다."""
-        
-        prompt = f"""당신은 이메일 분류 전문가입니다. 본문 내용을 꼼꼼히 분석하여 4개 카테고리 중 하나로 분류해주세요.
+
+        prompt = f"""당신은 이메일 분류 전문가입니다. **본문 내용을 실제로 읽고** 분류해주세요.
+
+## 핵심 원칙: 발신자가 아닌 "내용"으로 판단!
+- 신뢰 도메인(Google, LinkedIn, 쿠팡 등)이라도 **광고/마케팅이면 INFO**
+- 알 수 없는 도메인이라도 **중요한 내용이면 IMPORTANT**
 
 ## 분류 카테고리 (4개):
-- IMPORTANT: 실제 중요한 내용이 있는 메일
-  예: 결제/정산 알림, 보안 인증코드, 비밀번호 재설정, 인증서 갱신, 계약/업무 관련, 
-      서비스 장애/변경 알림, API 한도 초과, 계정 관련 중요 알림
-  
-- NORMAL: 일반적인 커뮤니케이션, 서비스 상태 알림
-  예: 배송 알림, 스마트스토어/쇼핑몰 주문 알림, GitHub 알림, Slack 알림,
-      월간 사용량 보고서, 일반 서비스 공지
 
-- INFO: 읽어볼 만한 정보성 메일 (보관처리)
-  예: 뉴스레터, 업계 소식, 제품 업데이트 소식
+### IMPORTANT (받은편지함 유지, 즉시 확인 필요)
+**나에게 직접 해당되는 개인화된 알림:**
+- 결제 완료/실패, 정산 내역, 청구서
+- 비밀번호 재설정, 인증코드, 보안 알림
+- 내 계정 상태 변경, 서비스 장애 통보
+- 배송 출발/완료, 주문 확인
+- 내가 올린 글에 대한 댓글/답변
+- 도메인/인증서 만료 임박
+- API 한도 초과, 사용량 경고
 
-- SPAM: **명백히** 광고성/불필요한 메일만 (스팸 처리)
-  예: 스팸 광고, 피싱, 사기, 복권 당첨, 요청하지 않은 B2B 영업 메일
-  
-## 중요 규칙 (반드시 준수!):
-1. **네이버/구글/카페24/쿠팡 등 신뢰할 수 있는 서비스**에서 온 메일은 SPAM이 절대 아닙니다!
-   - 스마트스토어, 네이버페이, 네이버 광고 → NORMAL 또는 IMPORTANT
-   - Google Cloud, Google Search Console → IMPORTANT 또는 NORMAL
-   - 쿠팡이츠, 쿠팡 판매자센터 → NORMAL 또는 IMPORTANT
-   
-2. **결제/정산/매출/수수료** 관련 → 무조건 IMPORTANT
-3. **보안 코드/인증/비밀번호** → 무조건 IMPORTANT
-4. **서비스 장애/점검/변경** 통보 → NORMAL 또는 IMPORTANT
+### NORMAL (받은편지함 유지)
+**일반적인 알림 (개인화되었지만 급하지 않음):**
+- GitHub PR/Issue 알림
+- Slack 메시지 알림
+- 월간 리포트, 통계 요약
+- 서비스 공지사항
 
-5. SPAM은 아래 경우에만:
-   - 피싱/사기성 메일
-   - 요청하지 않은 영업/홍보 메일
-   - 출처가 불명확한 광고
+### INFO (보관 처리 → 받은편지함에서 제거)
+**대량 발송 마케팅/뉴스레터:**
+- "~% 할인", "지금 바로", "놓치지 마세요" 등 프로모션
+- 뉴스레터, 업계 소식, 트렌드 리포트
+- 제품 업데이트 소식 (내가 요청하지 않은)
+- LinkedIn 팔로우 추천, 게임 알림
+- "수신거부" 링크가 있는 마케팅 이메일
+
+### SPAM (스팸함으로 이동)
+**악성/사기성 메일만:**
+- 피싱, 사기, 복권 당첨
+- 요청하지 않은 콜드 영업 메일
+- 출처 불명 광고
+
+## 판단 가이드:
+| 본문 특징 | 분류 |
+|----------|------|
+| "주문번호 #12345 배송 출발" | IMPORTANT |
+| "🎉 신규 회원 30% 할인!" | INFO |
+| "김*수님의 1월 정산 내역" | IMPORTANT |
+| "2026 트렌드 리포트 확인하세요" | INFO |
+| "u/xxx replied to your post" | IMPORTANT |
+| "Bill Gates님을 팔로우해보세요" | INFO |
+| "Steam 찜 목록 할인 중" | INFO |
+| "결제가 완료되었습니다" | IMPORTANT |
 
 ## 이메일 정보:
 - 제목: {email.subject}
@@ -284,11 +303,11 @@ class EmailClassifier:
 {{
     "category": "IMPORTANT/NORMAL/INFO/SPAM",
     "confidence": 0.0~1.0,
-    "reason": "분류 이유 (한국어)",
+    "reason": "분류 이유 (한국어, 본문 내용 기반으로 설명)",
     "priority": 1~5,
     "suggested_action": "keep/archive/spam"
 }}"""
-        
+
         return prompt
     
     def classify_email(self, email: Email) -> Optional[ClassificationResult]:
@@ -373,7 +392,7 @@ class EmailClassifier:
     
     def _build_batch_prompt(self, emails: List[Email]) -> str:
         """배치 분류를 위한 프롬프트를 생성합니다."""
-        
+
         emails_info = []
         for i, email in enumerate(emails):
             body_preview = email.body[:config.BATCH_BODY_PREVIEW] if email.body else ""
@@ -383,27 +402,31 @@ class EmailClassifier:
 - 발신자: {email.sender_email}
 - 본문: {body_preview}
 """)
-        
-        prompt = f"""이메일 분류 전문가입니다. 본문 내용을 분석하여 분류해주세요.
+
+        prompt = f"""이메일 분류 전문가. **본문 내용**을 실제로 읽고 분류하세요.
+
+## 핵심: 발신자가 아닌 "내용"으로 판단!
 
 ## 카테고리:
-- IMPORTANT: 결제/정산, 보안 인증, 비밀번호, 인증서, 계약/업무 (실제 조치 필요)
-- NORMAL: 일반 커뮤니케이션, 배송/서비스 알림
-- INFO: 유용한 정보성 뉴스레터 (보관)
-- SPAM: 딜/쿠폰/할인/세일/프로모션/마케팅/광고/SNS알림/피싱 (스팸처리)
+- IMPORTANT: 결제/정산, 보안 인증, 비밀번호, 배송 알림, 내 글에 대한 댓글/답변, 만료 임박 (나에게 직접 해당)
+- NORMAL: GitHub/Slack 알림, 월간 리포트, 서비스 공지
+- INFO: 할인/프로모션, 뉴스레터, 마케팅, 팔로우 추천, 게임 알림 (대량 발송, 보관처리)
+- SPAM: 피싱, 사기, 콜드 영업, 출처 불명 광고만 (악성 메일만!)
 
 ## 판단 기준:
-- 결제/입금/정산 → IMPORTANT
-- 인증코드/비밀번호 → IMPORTANT
-- 딜/쿠폰/할인/세일 → SPAM
-- 프로모션/마케팅 → SPAM
+- "결제 완료", "정산 내역", "주문 확인" → IMPORTANT
+- "인증코드", "비밀번호 재설정" → IMPORTANT
+- "replied to your post" → IMPORTANT
+- "~% 할인", "프로모션", "놓치지 마세요" → INFO
+- "팔로우해보세요", "찜 목록 할인" → INFO
+- 피싱/사기/복권 당첨 → SPAM
 
 ## 이메일:
 {"".join(emails_info)}
 
 ## 응답 (JSON 배열만):
 [{{"email_id":"ID","category":"카테고리","confidence":0.9,"reason":"이유","priority":3,"suggested_action":"액션"}}]"""
-        
+
         return prompt
     
     def classify_batch(

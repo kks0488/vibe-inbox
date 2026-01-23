@@ -3,6 +3,7 @@ Gmail API 클라이언트 모듈
 이메일 가져오기, 레이블 관리, 이메일 정리 기능 제공
 """
 import base64
+import time
 from typing import List, Dict, Optional, Any, Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -123,6 +124,7 @@ class GmailClient:
     def _batch_get_emails(self, msg_ids: List[str]) -> List[Email]:
         """
         Batch API를 사용하여 여러 이메일을 병렬로 가져옵니다.
+        Rate limit 방지를 위해 배치 간 딜레이와 재시도 로직 포함.
 
         Args:
             msg_ids: 가져올 이메일 ID 목록
@@ -132,11 +134,16 @@ class GmailClient:
         """
         emails: List[Email] = []
         results: Dict[str, Any] = {}
+        failed_ids: List[str] = []
 
         def callback(request_id: str, response: Any, exception: Exception):
             """배치 요청 콜백"""
             if exception is not None:
-                logger.warning(f"이메일 가져오기 실패 ({request_id}): {exception}")
+                # Rate limit 에러인 경우 재시도 목록에 추가
+                if '429' in str(exception) or 'rateLimitExceeded' in str(exception):
+                    failed_ids.append(request_id)
+                else:
+                    logger.warning(f"이메일 가져오기 실패 ({request_id}): {exception}")
             else:
                 results[request_id] = response
 
@@ -160,13 +167,45 @@ class GmailClient:
                     )
                     batch.add(request, request_id=msg_id)
 
-                # 배치 실행
-                try:
-                    batch.execute()
-                except HttpError as e:
-                    logger.error(f"배치 요청 실패: {e}")
+                # 배치 실행 (재시도 로직 포함)
+                for retry in range(config.GMAIL_RETRY_MAX):
+                    try:
+                        batch.execute()
+                        break
+                    except HttpError as e:
+                        if '429' in str(e) or 'rateLimitExceeded' in str(e):
+                            delay = config.GMAIL_RETRY_DELAY * (2 ** retry)
+                            logger.warning(f"Rate limit 도달, {delay}초 후 재시도...")
+                            time.sleep(delay)
+                        else:
+                            logger.error(f"배치 요청 실패: {e}")
+                            break
 
                 pbar.update(len(batch_ids))
+
+                # 배치 간 딜레이 (Rate limit 방지)
+                if batch_idx < total_batches - 1:
+                    time.sleep(config.GMAIL_BATCH_DELAY)
+
+        # 실패한 이메일 개별 재시도
+        if failed_ids:
+            logger.info(f"{len(failed_ids)}개 이메일 개별 재시도 중...")
+            for msg_id in failed_ids:
+                time.sleep(config.GMAIL_RETRY_DELAY)
+                for retry in range(config.GMAIL_RETRY_MAX):
+                    try:
+                        response = self.service.users().messages().get(
+                            userId=self.user_id,
+                            id=msg_id,
+                            format='full'
+                        ).execute()
+                        results[msg_id] = response
+                        break
+                    except HttpError as e:
+                        if retry < config.GMAIL_RETRY_MAX - 1:
+                            time.sleep(config.GMAIL_RETRY_DELAY * (2 ** retry))
+                        else:
+                            logger.warning(f"이메일 가져오기 최종 실패 ({msg_id})")
 
         # 결과 처리하여 Email 객체 생성
         for msg_id in msg_ids:

@@ -66,10 +66,15 @@ def get_gmail_credentials() -> Credentials:
             
             console.print("[cyan]🔐[/cyan] 브라우저에서 Google 계정으로 로그인해주세요...")
             flow = InstalledAppFlow.from_client_secrets_file(
-                str(credentials_path), 
+                str(credentials_path),
                 config.GMAIL_SCOPES
             )
-            creds = flow.run_local_server(port=0)
+            # 인증 URL 생성 및 출력
+            auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
+            console.print(f"\n[bold yellow]아래 URL을 브라우저에서 열어주세요:[/bold yellow]\n")
+            console.print(f"{auth_url}\n")
+            # 로컬 서버로 콜백 대기
+            creds = flow.run_local_server(port=0, open_browser=False)
             console.print("[green]✓[/green] 인증 완료!")
         
         # 토큰 저장 (보안: 소유자만 읽기/쓰기 가능)

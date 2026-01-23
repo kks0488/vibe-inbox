@@ -1,0 +1,15 @@
+{
+  "description": "신뢰할 수 있는 발신자/도메인 목록. 이 목록에 있는 발신자는 자동 보관/스팸 처리되지 않습니다.",
+  "updated_at": "2026-01-23",
+  "senders": [
+    "noreply@github.com",
+    "no-reply@accounts.google.com"
+  ],
+  "domains": [
+    "github.com",
+    "google.com",
+    "microsoft.com",
+    "slack.com",
+    "aws.amazon.com"
+  ]
+}
