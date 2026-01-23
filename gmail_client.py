@@ -347,8 +347,8 @@ class GmailClient:
                         plain_body = decoded
                     elif mime_type == 'text/html' and not html_body:
                         html_body = decoded
-                except:
-                    pass
+                except (base64.binascii.Error, UnicodeDecodeError) as e:
+                    logger.debug(f"Failed to decode email body: {e}")
             
             # 하위 parts 재귀 처리
             if 'parts' in part:
