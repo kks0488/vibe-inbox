@@ -7,6 +7,7 @@ import time
 import signal
 import sys
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
@@ -49,6 +50,7 @@ class GmailScheduler:
         self.slack_notifier = None
         self.safe_sender_learner: Optional[SafeSenderLearner] = None
         self._last_learn_time: Optional[datetime] = None
+        self._stop_event = threading.Event()
 
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -330,10 +332,8 @@ class GmailScheduler:
         while self.running:
             logger.info(f"다음 실행까지 {self.interval_minutes}분 대기...")
 
-            for _ in range(self.interval_minutes * 60):
-                if not self.running:
-                    break
-                time.sleep(1)
+            self._stop_event.wait(timeout=self.interval_minutes * 60)
+            self._stop_event.clear()
 
             if self.running:
                 self._process_emails()
@@ -345,6 +345,7 @@ class GmailScheduler:
     def stop(self):
         logger.info("스케줄러 중지 중...")
         self.running = False
+        self._stop_event.set()
 
 
 def main():
