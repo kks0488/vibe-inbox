@@ -78,9 +78,14 @@ def get_gmail_credentials() -> Credentials:
             console.print("[green]✓[/green] 인증 완료!")
         
         # 토큰 저장 (보안: 소유자만 읽기/쓰기 가능)
-        with open(token_path, 'w') as token_file:
-            token_file.write(creds.to_json())
-        os.chmod(token_path, 0o600)  # 소유자만 읽기/쓰기
+        # Create file with secure permissions from the start
+        fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, 'w') as token_file:
+                token_file.write(creds.to_json())
+        except Exception:
+            os.close(fd)
+            raise
         console.print(f"[green]✓[/green] 인증 토큰을 저장했습니다: {token_path}")
     
     return creds
@@ -196,9 +201,13 @@ def check_and_refresh_token() -> Tuple[bool, str]:
                     creds.refresh(Request())
 
                     # 갱신된 토큰 저장
-                    with open(token_path, 'w') as token_file:
-                        token_file.write(creds.to_json())
-                    os.chmod(token_path, 0o600)
+                    fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                    try:
+                        with os.fdopen(fd, 'w') as token_file:
+                            token_file.write(creds.to_json())
+                    except Exception:
+                        os.close(fd)
+                        raise
 
                     logger.info("토큰 사전 갱신 완료")
                     return (True, f"토큰 사전 갱신 완료 (이전 남은 시간: {hours_remaining:.1f}시간)")
@@ -219,9 +228,13 @@ def check_and_refresh_token() -> Tuple[bool, str]:
             return (True, "토큰 유효")
         elif creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            with open(token_path, 'w') as token_file:
-                token_file.write(creds.to_json())
-            os.chmod(token_path, 0o600)
+            fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            try:
+                with os.fdopen(fd, 'w') as token_file:
+                    token_file.write(creds.to_json())
+            except Exception:
+                os.close(fd)
+                raise
             return (True, "토큰 갱신 완료")
         else:
             return (False, "토큰 무효 - 재인증 필요")
