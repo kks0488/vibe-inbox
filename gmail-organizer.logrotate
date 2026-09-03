@@ -1,0 +1,11 @@
+/home/kkaemo/projects/gmail-organizer/logs/scheduler.log
+/home/kkaemo/projects/gmail-organizer/logs/service.log
+/home/kkaemo/projects/gmail-organizer/logs/service_error.log {
+    size 20M
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su kkaemo kkaemo
+}
