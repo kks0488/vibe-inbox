@@ -7,9 +7,10 @@ from typing import List, Dict, Optional, Set
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 
-from google import genai
+from openai import OpenAI
 
 import config
 from gmail_client import GmailClient, Email
@@ -32,12 +33,42 @@ class ColdEmailBlocker:
     
     def __init__(self, gmail_client: GmailClient, api_key: Optional[str] = None):
         self.gmail = gmail_client
-        self.api_key = api_key or config.GEMINI_API_KEY
-        self.client = genai.Client(api_key=self.api_key)
+        self.api_key = api_key or config.OPENAI_API_KEY
+        self.openai_model = config.OPENAI_MODEL
+        self.client = OpenAI(api_key=self.api_key, base_url=config.OPENAI_BASE_URL)
+        self.gemini_client = None
+        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+
+        # Gemini 폴백(new SDK) 유지
+        try:
+            from google import genai
+
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if gemini_key:
+                self.gemini_client = genai.Client(api_key=gemini_key)
+        except Exception:
+            self.gemini_client = None
         self.known_senders_file = Path(__file__).parent / "logs" / "known_senders.json"
         self._known_senders_cache: Optional[Set[str]] = None
         
         logger.info("Cold Email Blocker 초기화 완료")
+
+    def _generate_text(self, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception:
+            if self.gemini_client is None:
+                raise
+            response = self.gemini_client.models.generate_content(
+                model=self.gemini_model,
+                contents=prompt,
+            )
+            return (response.text or "").strip()
     
     def _load_known_senders(self) -> Set[str]:
         """이전에 내가 이메일을 보낸 발신자 목록 로드"""
@@ -151,12 +182,7 @@ class ColdEmailBlocker:
 }}"""
 
         try:
-            response = self.client.models.generate_content(
-                model=config.GEMINI_MODEL,
-                contents=prompt
-            )
-            
-            response_text = response.text.strip()
+            response_text = self._generate_text(prompt)
             
             # JSON 추출
             if "```json" in response_text:

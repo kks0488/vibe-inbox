@@ -4,13 +4,14 @@ Sender Categorizer 모듈
 """
 import logging
 import json
+import os
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
 
-from google import genai
+from openai import OpenAI
 
 import config
 from gmail_client import GmailClient, Email
@@ -69,13 +70,43 @@ class SenderCategorizer:
     
     def __init__(self, gmail_client: GmailClient, api_key: Optional[str] = None):
         self.gmail = gmail_client
-        self.api_key = api_key or config.GEMINI_API_KEY
-        self.client = genai.Client(api_key=self.api_key)
+        self.api_key = api_key or config.OPENAI_API_KEY
+        self.openai_model = config.OPENAI_MODEL
+        self.client = OpenAI(api_key=self.api_key, base_url=config.OPENAI_BASE_URL)
+        self.gemini_client = None
+        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+
+        # Gemini 폴백(new SDK) 유지
+        try:
+            from google import genai
+
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            if gemini_key:
+                self.gemini_client = genai.Client(api_key=gemini_key)
+        except Exception:
+            self.gemini_client = None
         self.cache_file = Path(__file__).parent / "logs" / "sender_categories.json"
         self._category_cache: Dict[str, str] = {}
         self._load_cache()
         
         logger.info("Sender Categorizer 초기화 완료")
+
+    def _generate_text(self, prompt: str) -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception:
+            if self.gemini_client is None:
+                raise
+            response = self.gemini_client.models.generate_content(
+                model=self.gemini_model,
+                contents=prompt,
+            )
+            return (response.text or "").strip()
     
     def _load_cache(self):
         """캐시 로드"""
@@ -139,12 +170,7 @@ class SenderCategorizer:
 }}"""
 
         try:
-            response = self.client.models.generate_content(
-                model=config.GEMINI_MODEL,
-                contents=prompt
-            )
-            
-            text = response.text.strip()
+            text = self._generate_text(prompt)
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0].strip()
             elif "```" in text:

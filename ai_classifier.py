@@ -1,5 +1,5 @@
 """
-Google Gemini AI를 사용한 이메일 분류 모듈
+OpenAI Compatible API를 사용한 이메일 분류 모듈
 """
 import json
 import time
@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass, asdict
-from google import genai
+from openai import OpenAI
 from rich.console import Console
 from rich.table import Table
 from tqdm import tqdm
@@ -169,24 +169,24 @@ class ClassificationCache:
 
 
 class EmailClassifier:
-    """Gemini AI 기반 이메일 분류기"""
+    """OpenAI Compatible API 기반 이메일 분류기"""
 
     def __init__(self, api_key: Optional[str] = None, use_cache: bool = True):
-        self.api_key = api_key or config.GEMINI_API_KEY
+        self.api_key = api_key or config.OPENAI_API_KEY
 
         if not self.api_key:
             raise ValueError(
-                "Gemini API 키가 필요합니다. "
-                ".env 파일에 GEMINI_API_KEY를 설정하거나 직접 전달하세요."
+                "OpenAI API 키가 필요합니다. "
+                ".env 파일에 OPENAI_API_KEY를 설정하거나 직접 전달하세요."
             )
 
-        self.client = genai.Client(api_key=self.api_key)
-        self.current_model = config.GEMINI_MODEL
+        self.client = OpenAI(api_key=self.api_key, base_url=config.OPENAI_BASE_URL)
+        self.current_model = config.OPENAI_MODEL
         self.cache = ClassificationCache() if use_cache else None
         self._cache_hits = 0
         self._cache_misses = 0
 
-        console.print(f"[green]✓[/green] Gemini AI 클라이언트 로드됨: {self.current_model}")
+        console.print(f"[green]✓[/green] AI 클라이언트 로드됨: {self.current_model}")
         if self.cache:
             stats = self.cache.stats()
             console.print(f"[cyan]📦[/cyan] 분류 캐시 활성화 ({stats['total_entries']}/{stats['max_size']})")
@@ -203,18 +203,18 @@ class EmailClassifier:
         """
         last_error = None
 
-        for model in config.GEMINI_MODELS:
+        for model in config.OPENAI_MODELS:
             for attempt in range(config.MAX_API_RETRIES):
                 try:
-                    response = self.client.models.generate_content(
+                    response = self.client.chat.completions.create(
                         model=model,
-                        contents=prompt
+                        messages=[{"role": "user", "content": prompt}],
                     )
                     # 성공 시 현재 모델 업데이트
                     if model != self.current_model:
                         logger.info(f"모델 변경: {self.current_model} → {model}")
                         self.current_model = model
-                    return response.text.strip()
+                    return response.choices[0].message.content.strip()
 
                 except Exception as e:
                     last_error = e

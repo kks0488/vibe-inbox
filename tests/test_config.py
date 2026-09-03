@@ -17,13 +17,13 @@ class TestConfig:
         """BASE_DIR이 유효한 경로"""
         assert config.BASE_DIR.exists()
 
-    def test_gemini_models_not_empty(self):
-        """GEMINI_MODELS 목록이 비어있지 않음"""
-        assert len(config.GEMINI_MODELS) > 0
+    def test_openai_models_not_empty(self):
+        """OPENAI_MODELS 목록이 비어있지 않음"""
+        assert len(config.OPENAI_MODELS) > 0
 
-    def test_gemini_model_is_first_in_list(self):
-        """현재 GEMINI_MODEL이 목록의 첫 번째"""
-        assert config.GEMINI_MODEL == config.GEMINI_MODELS[0]
+    def test_openai_model_is_first_in_list(self):
+        """현재 OPENAI_MODEL이 목록의 첫 번째"""
+        assert config.OPENAI_MODEL == config.OPENAI_MODELS[0]
 
     def test_email_categories_valid(self):
         """EMAIL_CATEGORIES 구조 확인"""

@@ -84,16 +84,17 @@ load_dotenv()
 # 프로젝트 루트 디렉토리
 BASE_DIR = Path(__file__).parent
 
-# Google AI (Gemini) API 설정
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# OpenAI Compatible API 설정 (로컬 프록시)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:8317/v1")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.2")
 
-# Gemini 모델 설정 (폴백 지원)
-GEMINI_MODELS = [
-    "gemini-3-flash-preview",  # 기본 모델
-    "gemini-2.0-flash",        # 폴백 1
-    "gemini-1.5-flash",        # 폴백 2
+# 모델 폴백 지원
+OPENAI_MODELS = [
+    OPENAI_MODEL,       # 기본 모델
+    "gpt-5.1",          # 폴백 1
+    "gpt-5",            # 폴백 2
 ]
-GEMINI_MODEL = GEMINI_MODELS[0]  # 현재 사용 중인 모델
 
 # Gmail OAuth 설정
 GMAIL_CREDENTIALS_PATH = os.getenv("GMAIL_CREDENTIALS_PATH", "credentials.json")

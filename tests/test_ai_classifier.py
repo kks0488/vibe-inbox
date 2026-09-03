@@ -123,34 +123,34 @@ class TestClassificationCache:
 class TestEmailClassifierWithCache:
     """캐시를 사용하는 이메일 분류기 테스트"""
 
-    @patch('ai_classifier.genai')
-    def test_classifier_init_with_cache(self, mock_genai):
+    @patch('ai_classifier.OpenAI')
+    def test_classifier_init_with_cache(self, mock_openai):
         """캐시가 활성화된 분류기 초기화"""
         from ai_classifier import EmailClassifier
         import config
 
         # Mock API key
-        with patch.object(config, 'GEMINI_API_KEY', 'test_api_key'):
+        with patch.object(config, 'OPENAI_API_KEY', 'test_api_key'):
             classifier = EmailClassifier(use_cache=True)
             assert classifier.cache is not None
 
-    @patch('ai_classifier.genai')
-    def test_classifier_init_without_cache(self, mock_genai):
+    @patch('ai_classifier.OpenAI')
+    def test_classifier_init_without_cache(self, mock_openai):
         """캐시가 비활성화된 분류기 초기화"""
         from ai_classifier import EmailClassifier
         import config
 
-        with patch.object(config, 'GEMINI_API_KEY', 'test_api_key'):
+        with patch.object(config, 'OPENAI_API_KEY', 'test_api_key'):
             classifier = EmailClassifier(use_cache=False)
             assert classifier.cache is None
 
-    @patch('ai_classifier.genai')
-    def test_cache_stats_method(self, mock_genai):
+    @patch('ai_classifier.OpenAI')
+    def test_cache_stats_method(self, mock_openai):
         """캐시 통계 메서드"""
         from ai_classifier import EmailClassifier
         import config
 
-        with patch.object(config, 'GEMINI_API_KEY', 'test_api_key'):
+        with patch.object(config, 'OPENAI_API_KEY', 'test_api_key'):
             classifier = EmailClassifier(use_cache=True)
             stats = classifier.get_cache_stats()
 
