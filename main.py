@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Gmail Organizer - AI 기반 이메일 정리 도구
-Google Gemini AI를 사용하여 이메일을 자동으로 분류하고 정리합니다.
+OpenAI 호환 AI 모델로 이메일을 자동으로 분류하고 정리합니다.
 """
 import argparse
 import sys
@@ -37,7 +37,7 @@ def print_banner():
      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚══════╝╚══════╝╚═╝  ╚═╝
     """
     console.print(f"[cyan]{banner}[/cyan]")
-    console.print("[bold]AI 기반 Gmail 정리 도구[/bold] - Powered by Google Gemini\n")
+    console.print("[bold]AI 기반 Gmail 정리 도구[/bold] - Powered by OpenAI-compatible AI\n")
 
 
 def cmd_status():
@@ -50,10 +50,10 @@ def cmd_status():
     console.print()
     
     # API 키 상태
-    if config.GEMINI_API_KEY:
-        console.print(f"[green]✓[/green] Gemini API 키 설정됨")
+    if config.OPENAI_API_KEY:
+        console.print(f"[green]✓[/green] AI API 키 설정됨 ({config.OPENAI_MODEL})")
     else:
-        console.print(f"[red]✗[/red] Gemini API 키 미설정")
+        console.print(f"[red]✗[/red] AI API 키 미설정 (OPENAI_API_KEY)")
     
     # Gmail 연결 테스트
     try:

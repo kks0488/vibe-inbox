@@ -1,365 +1,266 @@
-# VibeInbox
+<p align="center">
+  <img src="assets/banner-ko.png" alt="vibe-inbox: 보낸 사람이 아니라 내용을 읽는 AI 지메일 자동 정리" width="100%">
+</p>
 
-**AI 기반 Gmail 받은편지함 트리아지(분류/정리) 도구** - Gemini가 이메일 **본문 내용을 실제로 읽고** 분류합니다.
+<p align="center">
+  <a href="README.md"><b>English</b></a> · <b>한국어</b>
+</p>
 
-## ⚡ 빠른 시작
+<h2 align="center">누가 보냈는지가 아니라 무슨 내용인지로<br>스스로 정리되는 받은편지함.</h2>
+
+<p align="center">
+  vibe-inbox는 지메일을 AI가 한 통씩 읽고 4가지 레이블 중 하나를 붙인 뒤, 광고·뉴스레터는 보관 처리합니다.<br>
+  아무것도 삭제하지 않으며, 스팸함 이동은 AI 확신도가 90% 이상일 때만 합니다.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kks0488/vibe-inbox?color=3fb950" alt="License"></a>
+  <a href="https://github.com/kks0488/vibe-inbox/stargazers"><img src="https://img.shields.io/github/stars/kks0488/vibe-inbox?style=flat&color=f78166" alt="Stars"></a>
+  <img src="https://img.shields.io/github/languages/top/kks0488/vibe-inbox?color=79c0ff" alt="Top language">
+  <img src="https://img.shields.io/github/last-commit/kks0488/vibe-inbox?color=8b949e" alt="Last commit">
+</p>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 내용을 읽고 판단
+구글 결제 영수증은 받은편지함에 남고, 구글 프로모션은 보관됩니다. 발신 도메인이 아니라 본문으로 판단합니다.
+
+</td>
+<td width="50%" valign="top">
+
+### 기본값이 안전
+삭제 기능이 아예 없습니다. 스팸 이동은 확신도 90% 이상만, 신뢰 발신자는 레이블만 붙습니다.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 먼저 미리 보기
+`analyze`는 지메일을 건드리지 않고 결과만 보여 줍니다. `organize`는 작업 계획을 보여 주고 묻은 뒤 적용합니다(`-y`면 묻지 않음).
+
+</td>
+<td width="50%" valign="top">
+
+### 알아서 계속 실행
+스케줄러가 기본 30분마다 새 메일을 처리하고, 내가 보내거나 답장한 상대를 신뢰 발신자로 배웁니다. systemd나 Docker로 돌릴 수 있습니다.
+
+</td>
+</tr>
+</table>
+
+## 설치
+
+Python 3.9 이상, Gmail API를 켠 Google Cloud 프로젝트, OpenAI 호환 API 키가 필요합니다.
 
 ```bash
-git clone https://github.com/kks0488/vibe-inbox.git
-cd vibe-inbox
-
+git clone https://github.com/kks0488/vibe-inbox.git && cd vibe-inbox
 pip install -r requirements.txt
-cp env_example.txt .env  # GEMINI_API_KEY 설정
-
-# Gmail OAuth 클라이언트 파일을 ./credentials.json 로 준비 (아래 참고)
-python main.py auth
-python main.py analyze -n 30          # 분석만 (변경 없음)
-python main.py organize -n 50 -y      # 레이블/정리 적용
+cp env_example.txt .env     # OPENAI_API_KEY 설정 (필요하면 OPENAI_BASE_URL / OPENAI_MODEL도)
 ```
 
-### ✅ 안전한 기본값
+지메일 OAuth 클라이언트 파일을 `./credentials.json`에 둡니다(기술 세부 사항의 "Google Cloud 설정" 참고).
 
-- 삭제(휴지통 이동) 없음
-- 스팸 이동은 확신도 `90%` 이상일 때만
-- 신뢰 발신자/도메인은 자동 보관/스팸 처리되지 않음
+## 빠른 시작
 
-## ✨ 주요 기능
-
-- 🤖 **내용 기반 AI 분류**: 발신자가 아닌 **본문 내용**을 분석하여 분류
-- 🏷️ **자동 레이블 지정**: 분류 결과에 따라 Gmail 레이블 자동 적용
-- 📦 **스마트 보관처리**: 마케팅/프로모션 이메일 자동 보관 (신뢰 도메인이어도!)
-- 🛡️ **신뢰 발신자 관리**: 중요 발신자 화이트리스트 지원
-- 📊 **통계 및 요약**: 이메일 분류 결과 상세 통계 제공
-- ⏰ **자동 스케줄러**: systemd 서비스로 백그라운드 실행
-
-## 📂 분류 카테고리 (4개)
-
-| 카테고리 | 설명 | 예시 | 액션 |
-|---------|------|------|------|
-| 📌 **IMPORTANT** | 나에게 직접 해당되는 알림 | 결제 완료, 비밀번호 재설정, 배송 알림, 내 글에 대한 댓글 | 유지 |
-| 📧 **NORMAL** | 일반적인 서비스 알림 | GitHub PR, Slack 알림, 월간 리포트 | 유지 |
-| 📰 **INFO** | 대량 발송 마케팅/뉴스레터 | 할인 프로모션, 팔로우 추천, 트렌드 리포트 | **보관** |
-| 🚫 **SPAM** | 악성/사기성 메일만 | 피싱, 콜드 영업, 출처 불명 광고 | 스팸함 |
-
-### 핵심 차별점
-
-```
-❌ 기존 방식: Google에서 온 메일 → 무조건 중요
-✅ 이 도구:   Google 결제 알림 → 중요 / Google 프로모션 → 보관
+```bash
+python main.py auth                  # 브라우저에서 지메일 로그인
+python main.py status                # 로그인·API 키·받은편지함 수 확인
+python main.py analyze -n 30         # 미리 보기: 분류만, 변경 없음
+python main.py organize -n 50        # 계획 표시 → 확인 → 레이블/보관 적용
+python main.py                       # 대화형 메뉴
 ```
 
-| 이메일 예시 | 기존 | VibeInbox |
-|------------|------|-----------------|
-| LinkedIn 댓글 알림 | 중요 | ✅ 중요 |
-| LinkedIn 팔로우 추천 | 중요 | 📦 보관 |
-| Steam 찜 목록 할인 | 일반 | 📦 보관 |
-| 쿠팡 결제 완료 | 일반 | ✅ 중요 |
+## 데모
+
+이메일 30통에 `organize`를 실행한 모습입니다. 출력 형식은 코드 그대로이고, 개수는 실제 메일함이 아닌 예시 값입니다. 마지막 테스트 실행은 실제 결과입니다.
+
+<p align="center"><img src="assets/demo.svg" alt="터미널 데모: 이메일 30통을 분류하고 계획을 보여 준 뒤 레이블과 보관 처리" width="100%"></p>
+
+## 동작 방식
+
+| 카테고리 | 대상 | 예시 | 처리 |
+|----------|------|------|------|
+| **IMPORTANT (중요)** | 나에게 직접 해당, 확인 필요 | 결제 완료, 비밀번호 재설정, 배송, 내 글의 답글 | 유지 |
+| **NORMAL (일반)** | 일상적인 서비스 알림 | GitHub PR, Slack 알림, 월간 리포트 | 유지 |
+| **INFO (정보)** | 대량 마케팅·뉴스레터 | 할인 광고, "이 사람을 팔로우하세요", 트렌드 리포트 | **보관** |
+| **SPAM (스팸)** | 피싱·사기·콜드 영업 | 출처 불명 광고, 복권 당첨 | 스팸함(확신도 90% 이상) |
+
+처리한 메일에는 모두 `AI/` 아래 레이블이 붙습니다. 5통씩 묶어 분류하고, 결과를 24시간 캐시해 같은 메일을 AI에 두 번 보내지 않습니다.
+
+```mermaid
+flowchart LR
+    G[지메일 받은편지함] --> F[새 메일 가져오기<br/>이미 분류된 메일 건너뜀]
+    F --> C[AI 분류<br/>5통씩, 캐시]
+    C --> L[AI/ 레이블 적용]
+    L --> S{신뢰 발신자?}
+    S -->|예| K[유지]
+    S -->|아니오| A{카테고리 처리}
+    A -->|INFO| AR[보관]
+    A -->|SPAM 90% 이상| SP[스팸함]
+    A -->|IMPORTANT / NORMAL| K
+```
+
+스케줄러는 이 밖에도 처음 연락한 발신자의 콜드 메일 확인(레이블만), 하루 한 번 신뢰 발신자 학습, 스팸 처리 내역 주간 메일 보고, 토큰 만료 전 갱신, 오류 시 슬랙 알림(선택)을 합니다.
+
+## 자주 묻는 질문
+
+**메일을 삭제하나요?**
+아니요. 레이블, 보관(받은편지함에서 빼기), 스팸함 이동만 합니다. 보관한 메일은 "전체보관함"에 그대로 있습니다.
+
+**어떤 AI 모델을 쓰나요?**
+OpenAI 호환 엔드포인트면 됩니다. `OPENAI_BASE_URL`과 `OPENAI_MODEL`로 정하며, 기본 모델은 `gpt-5.2`, 실패 시 `gpt-5.1`, `gpt-5` 순으로 바꿉니다.
+
+**AI에 무엇이 전달되나요?**
+제목, 보낸 사람, 본문 앞부분입니다. 묶음 분류는 메일당 300자, 한 통씩 분류할 때는 최대 1,800자입니다.
+
+**특정 발신자를 보호할 수 있나요?**
+네. `safe_senders.example.json`을 `safe_senders.json`으로 복사해 발신자나 도메인을 적으면, 레이블만 붙고 보관·스팸 처리되지 않습니다.
+
+## 로드맵 (계획, 아직 구현 안 됨)
+
+- CLI 영어 출력 옵션(현재 한국어).
+- `config.py` 대신 설정 파일로 카테고리 규칙 수정.
 
 ---
 
-## 🚀 설치 방법
+<details>
+<summary><b>기술 세부 사항</b></summary>
 
-### 1. 필수 요구사항
+### Google Cloud 설정 (Gmail API)
 
-- Python 3.9 이상
-- Google Cloud 계정
-- Gemini API 키
-
-### 2. 의존성 설치
-
-```bash
-cd vibe-inbox  # (이전: gmail-organizer)
-pip install -r requirements.txt
-```
-
-### 3. Google Cloud 설정 (Gmail API)
-
-Gmail API를 사용하려면 OAuth 2.0 인증이 필요합니다.
-
-#### Step 1: Google Cloud 프로젝트 생성
-
-1. [Google Cloud Console](https://console.cloud.google.com/) 접속
-2. 새 프로젝트 생성 또는 기존 프로젝트 선택
-
-#### Step 2: Gmail API 활성화
-
-1. "API 및 서비스" → "라이브러리" 이동
-2. "Gmail API" 검색
-3. "사용 설정" 클릭
-
-#### Step 3: OAuth 동의 화면 설정
-
-1. "API 및 서비스" → "OAuth 동의 화면"
-2. "외부" 선택 (테스트용)
-3. 앱 이름, 이메일 입력
-4. 범위 추가:
+1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트를 만들거나 고릅니다.
+2. API 및 서비스 → 라이브러리 → **Gmail API** 사용 설정.
+3. OAuth 동의 화면 → 외부 → 아래 범위를 추가하고 내 계정을 테스트 사용자로 추가:
    - `https://www.googleapis.com/auth/gmail.readonly`
    - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/gmail.labels`
-5. 테스트 사용자에 본인 이메일 추가
+4. 사용자 인증 정보 → OAuth 클라이언트 ID → **데스크톱 앱** → JSON 다운로드.
+5. 프로젝트 폴더에 `credentials.json`으로 저장.
 
-#### Step 4: OAuth 2.0 클라이언트 ID 생성
-
-1. "API 및 서비스" → "사용자 인증 정보"
-2. "사용자 인증 정보 만들기" → "OAuth 클라이언트 ID"
-3. 애플리케이션 유형: "데스크톱 앱"
-4. 이름 입력 후 "만들기"
-5. **JSON 다운로드** 클릭
-6. 다운로드한 파일을 `credentials.json`으로 이름 변경
-7. 프로젝트 폴더에 `credentials.json` 파일 배치
-
-### 4. Gemini API 키 설정
-
-1. [Google AI Studio](https://aistudio.google.com/app/apikey)에서 API 키 발급
-2. `.env` 파일 생성:
+### 환경 변수 (`.env`)
 
 ```bash
-# .env 파일 생성
-cp env_example.txt .env
-```
-
-3. `.env` 파일 편집:
-
-```
-GEMINI_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1   # OpenAI 호환 엔드포인트
+OPENAI_MODEL=gpt-5.2
 GMAIL_CREDENTIALS_PATH=credentials.json
+
+# 선택
+SLACK_ENABLED=false
+SLACK_BOT_TOKEN=your-slack-bot-token
+SLACK_GMAIL_CHANNEL_ID=C1234567890
+AUTO_LEARN_SAFE_SENDERS=true
+SKIP_ALREADY_CLASSIFIED=true
+LOG_LEVEL=INFO
 ```
 
----
+`OPENAI_BASE_URL`을 비워 두면 코드 기본값은 로컬 OpenAI 호환 프록시(`http://localhost:8317/v1`)입니다.
 
-## 📖 사용 방법
-
-### 대화형 메뉴 (권장)
+### CLI
 
 ```bash
-python main.py
+python main.py status                 # 로그인·API 키·받은편지함 통계
+python main.py auth                   # 지메일 OAuth
+python main.py analyze -n 50          # 분류만
+python main.py analyze -q "is:unread" # 지메일 검색어 지정
+python main.py organize -n 30         # 분류 + 적용(먼저 확인)
+python main.py organize -n 50 -y      # 확인 없이 적용
+python main.py logout                 # 저장된 토큰 삭제
 ```
 
-### CLI 명령어
-
-```bash
-# 상태 확인
-python main.py status
-
-# Gmail 인증
-python main.py auth
-
-# 이메일 분석 (분류만, 변경 없음)
-python main.py analyze -n 50
-
-# 이메일 정리 (분류 + 레이블 적용)
-python main.py organize -n 30
-
-# 특정 쿼리로 분석
-python main.py analyze -q "is:unread"
-
-# 자동 정리 (확인 없이)
-python main.py organize -n 50 -y
-
-# 로그아웃
-python main.py logout
-```
-
-### 예제: 첫 실행
-
-```bash
-# 1. 의존성 설치
-pip install -r requirements.txt
-
-# 2. 프로그램 실행
-python main.py
-
-# 3. 메뉴에서 "4. Gmail 인증" 선택
-# 4. 브라우저에서 Google 계정 로그인
-# 5. "1. 현재 상태 확인"으로 연결 확인
-# 6. "2. 이메일 분석"으로 테스트
-# 7. "3. 이메일 정리"로 실제 정리 시작
-```
-
----
-
-## 🔧 설정 커스터마이징
-
-`config.py` 파일에서 다양한 설정을 변경할 수 있습니다:
+### `config.py` 설정
 
 ```python
-# AI 모델 변경
-GEMINI_MODEL = "gemini-1.5-flash"  # 빠른 모델
-# GEMINI_MODEL = "gemini-1.5-pro"  # 더 정확한 모델
-
-# 배치 크기 조정
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.2")
+SPAM_CONFIDENCE_THRESHOLD = 0.9
+LABEL_PREFIX = "AI/"
 DEFAULT_BATCH_SIZE = 50
+CLASSIFICATION_CACHE_TTL_HOURS = 24
 
-# 이메일 내용 최대 길이
-MAX_EMAIL_CONTENT_LENGTH = 2000
-
-# 카테고리별 액션 수정
 EMAIL_CATEGORIES = {
-    "SPAM": {
-        "action": "spam"  # "spam", "archive", "keep" 중 선택
-    }
+    "SPAM": {"action": "spam"},   # "spam", "archive", "keep"
+    ...
 }
 ```
 
----
-
-## ⚠️ 주의사항
-
-### 보안
-
-- **절대로 비밀번호를 코드에 직접 입력하지 마세요**
-- `credentials.json`과 `token.json`은 `.gitignore`에 추가하세요
-- API 키는 환경변수로 관리하세요
-
-### API 사용량
-
-- Gemini API는 무료 할당량이 있습니다 (분당 요청 수 제한)
-- 많은 이메일을 한 번에 처리하면 API 한도에 도달할 수 있습니다
-- 배치 크기를 조절하여 사용량을 관리하세요
-
-### Gmail API
-
-- 스팸으로 분류된 이메일은 확신도가 높을 때만 이동됩니다
-- 레이블은 "AI/" 접두사로 생성됩니다 (이전 접두사: "AI분류/")
-- 삭제 기능은 비활성화되어 있습니다 (안전을 위해)
-
----
-
-## 📁 프로젝트 구조
-
-```
-vibe-inbox/
-├── main.py              # 메인 실행 파일
-├── config.py            # 설정 파일
-├── auth.py              # Gmail OAuth 인증
-├── gmail_client.py      # Gmail API 클라이언트
-├── ai_classifier.py     # Gemini AI 분류기
-├── requirements.txt     # 의존성 목록
-├── README.md            # 이 파일
-├── env_example.txt      # 환경변수 예시
-├── credentials.json     # OAuth 자격 증명 (직접 추가)
-└── token.json           # 인증 토큰 (자동 생성)
-```
-
----
-
-## 🖥️ Ubuntu 서버 상시 실행 설정
-
-### 1. 프로젝트 파일 전송
+### 스케줄러
 
 ```bash
-# 로컬에서 Ubuntu 서버로 파일 전송
-scp -r /path/to/vibe-inbox username@your-server:/home/username/
+python scheduler.py                               # 30분마다 정리
+python scheduler.py --interval 60 --batch-size 100
+python scheduler.py --analyze-only                # 분류와 기록만, 변경 없음
 ```
 
-### 2. Ubuntu에서 설치 스크립트 실행
+### 우분투 서버 (systemd)
 
 ```bash
-# SSH 접속
+scp -r vibe-inbox username@your-server:~/
 ssh username@your-server
-
-# 설치 스크립트 실행
-cd ~/vibe-inbox
-chmod +x install_ubuntu.sh
-./install_ubuntu.sh
-
-# 참고: 설치 스크립트는 기본적으로 ~/gmail-organizer 에 프로젝트를 복사합니다
+cd ~/vibe-inbox && chmod +x install_ubuntu.sh && ./install_ubuntu.sh   # ~/gmail-organizer에 설치
 ```
 
-### 3. 인증 설정 (중요!)
+OAuth 로그인에는 브라우저가 필요합니다. 내 PC에서 로그인한 뒤 `token.json`, `credentials.json`, `.env`를 `~/gmail-organizer/`로 복사하거나, 포트 포워딩을 씁니다.
 
-⚠️ **OAuth 인증은 브라우저가 필요합니다.** 두 가지 방법이 있습니다:
-
-**방법 A: 로컬에서 인증 후 token.json 복사 (권장)**
 ```bash
-# 로컬 PC에서 인증 완료 후
-scp token.json username@your-server:/home/username/gmail-organizer/
-scp credentials.json username@your-server:/home/username/gmail-organizer/
-scp .env username@your-server:/home/username/gmail-organizer/
-```
-
-**방법 B: SSH 포트 포워딩 사용**
-```bash
-# 로컬에서 SSH 접속 시 포트 포워딩
 ssh -L 8080:localhost:8080 username@your-server
-
-# 서버에서 인증 실행
-cd ~/gmail-organizer
-source venv/bin/activate
-python main.py auth
-# 브라우저에서 표시된 URL 접속
+cd ~/gmail-organizer && source venv/bin/activate && python main.py auth
 ```
 
-### 4. 서비스 시작
+그다음:
 
 ```bash
-# 서비스 시작
-sudo systemctl start gmail-organizer
-
-# 부팅 시 자동 시작 설정
-sudo systemctl enable gmail-organizer
-
-# 상태 확인
+sudo systemctl enable --now gmail-organizer
 sudo systemctl status gmail-organizer
-```
-
-### 5. 로그 모니터링
-
-```bash
-# 실시간 로그 확인
 tail -f ~/gmail-organizer/logs/scheduler.log
-
-# 서비스 로그 확인
-journalctl -u gmail-organizer -f
 ```
 
-### 6. 스케줄러 옵션
+`gmail-organizer.logrotate`로 로그 파일을 순환합니다.
+
+### Docker
 
 ```bash
-# 직접 실행 (테스트용)
-cd ~/gmail-organizer
-source venv/bin/activate
-
-# 기본 실행 (30분 간격, 자동 정리)
-python scheduler.py
-
-# 커스텀 옵션
-python scheduler.py --interval 60 --batch-size 100  # 1시간 간격, 100개씩
-python scheduler.py --analyze-only  # 분석만 (정리 안함)
+docker-compose up -d       # scheduler.py -i 30 실행, token.json·credentials.json·safe_senders.json·logs/ 연결
+docker-compose logs -f
 ```
 
----
+### 파일 구조
 
-## 🐛 문제 해결
+```
+main.py                 CLI와 대화형 메뉴
+scheduler.py            상시 실행 데몬
+auth.py                 지메일 OAuth와 토큰 갱신
+gmail_client.py         Gmail API(배치 요청, 레이블, 보관, 스팸)
+ai_classifier.py        분류 프롬프트, 묶음 처리, 캐시, 모델 폴백
+cold_email_blocker.py   처음 연락한 발신자의 콜드 메일 확인
+safe_sender_learner.py  보낸 메일·답장에서 신뢰 발신자 학습
+email_reporter.py       주간 스팸 보고 메일
+slack_notifier.py       슬랙 알림(선택)
+classification_stats.py 분류 기록
+config.py               전체 설정
+tests/                  pytest 테스트
+```
 
-### "credentials.json 파일이 없습니다"
+### 테스트
 
-- Google Cloud Console에서 OAuth 클라이언트 ID를 생성하고 JSON 파일을 다운로드하세요
-- 파일 이름이 정확히 `credentials.json`인지 확인하세요
+```bash
+pip install -r requirements.txt
+pytest -q
+```
 
-### "Gemini API 키가 필요합니다"
+### 문제 해결
 
-- `.env` 파일에 `GEMINI_API_KEY`가 설정되어 있는지 확인하세요
-- API 키가 유효한지 확인하세요
+- **"credentials.json 파일이 필요합니다":** 데스크톱 OAuth 클라이언트를 만들고 JSON을 `credentials.json`으로 저장.
+- **"OpenAI API 키가 필요합니다":** `.env`에 `OPENAI_API_KEY` 설정.
+- **토큰 만료:** `python main.py auth`를 다시 실행하거나 `token.json`을 지우고 다시 로그인.
+- **API 한도:** 잠시 후 다시 시도하거나 `config.py`의 `DEFAULT_BATCH_SIZE`를 줄임.
 
-### "토큰 만료됨"
+자세한 구조는 [docs/architecture.md](docs/architecture.md).
 
-- `python main.py auth` 명령으로 재인증하세요
-- 또는 `token.json` 파일을 삭제하고 다시 인증하세요
+</details>
 
-### "API 한도 초과"
+## 라이선스
 
-- 잠시 기다린 후 다시 시도하세요
-- `config.py`에서 `DEFAULT_BATCH_SIZE`를 줄이세요
-
----
-
-## 📄 라이선스
-
-MIT License
-
----
-
-## 🤝 기여
-
-버그 리포트, 기능 제안, PR을 환영합니다!
+[MIT](LICENSE)

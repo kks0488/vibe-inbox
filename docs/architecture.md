@@ -14,7 +14,7 @@ graph TB
         S --> C
         S --> SL[slack_notifier.py]
 
-        C --> |Gemini API| AI[Google Gemini]
+        C --> |OpenAI-compatible API| AI[LLM]
         G --> |Gmail API| GM[Gmail]
         A --> |OAuth| GO[Google OAuth]
 
@@ -35,7 +35,7 @@ graph TB
 
 1. **Authentication**: `auth.py` handles OAuth 2.0 flow with Google
 2. **Email Fetching**: `gmail_client.py` retrieves emails via Gmail API
-3. **Classification**: `ai_classifier.py` sends emails to Gemini for classification
+3. **Classification**: `ai_classifier.py` sends emails to an OpenAI-compatible model for classification
 4. **Action**: Based on classification, emails are labeled/archived/moved
 5. **Notification**: Optional Slack notifications via `slack_notifier.py`
 
@@ -46,7 +46,7 @@ graph TB
 | `main.py` | CLI interface, user interaction |
 | `scheduler.py` | Background scheduling, orchestration |
 | `gmail_client.py` | Gmail API wrapper |
-| `ai_classifier.py` | Gemini AI classification |
+| `ai_classifier.py` | AI classification (OpenAI-compatible API) |
 | `auth.py` | OAuth authentication |
 | `config.py` | Configuration management |
 | `utils.py` | Shared utilities |

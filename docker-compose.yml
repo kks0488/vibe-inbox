@@ -15,7 +15,9 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Seoul
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.2}
       - LOG_LEVEL=INFO
       - SLACK_ENABLED=${SLACK_ENABLED:-true}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
